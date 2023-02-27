@@ -5,7 +5,6 @@ import "./Ownable.sol";
 
 contract Constants {
     uint256 public tradeFlag = 1;
-    uint256 public basicFlag = 0;
     uint256 public dividendFlag = 1;
 }
 
@@ -13,13 +12,12 @@ contract GasContract is Ownable, Constants {
     uint256 public totalSupply = 0; // cannot be updated
     uint256 public paymentCounter = 0;
     mapping(address => uint256) public balances;
-    uint256 public tradePercent = 12;
+    uint8 public tradePercent = 12;
     address public contractOwner;
-    uint256 public tradeMode = 0;
+    uint8 public tradeMode = 0;
     mapping(address => Payment[]) public payments;
     mapping(address => uint256) public whitelist;
     address[5] public administrators;
-    bool public isReady = false;
     enum PaymentType {
         Unknown,
         BasicPayment,
@@ -35,7 +33,7 @@ contract GasContract is Ownable, Constants {
         PaymentType paymentType;
         uint256 paymentID;
         bool adminUpdated;
-        string recipientName; // max 8 characters
+        bytes32 recipientName; // max 8 characters
         address recipient;
         address admin; // administrators address
         uint256 amount;
@@ -43,8 +41,8 @@ contract GasContract is Ownable, Constants {
 
     struct History {
         uint256 lastUpdate;
-        address updatedBy;
         uint256 blockNumber;
+        address updatedBy;
     }
     uint256 wasLastOdd = 1;
     mapping(address => uint256) public isOddWhitelistUser;
@@ -99,7 +97,7 @@ contract GasContract is Ownable, Constants {
         address admin,
         uint256 ID,
         uint256 amount,
-        string recipient
+        bytes32 recipient
     );
     event WhiteListTransfer(address indexed);
 
@@ -185,6 +183,17 @@ contract GasContract is Ownable, Constants {
         return payments[_user];
     }
 
+    function stringToBytes32(string memory source) public pure returns (bytes32 result) {
+        bytes memory tempEmptyStringTest = bytes(source);
+        if (tempEmptyStringTest.length == 0) {
+            return 0x0;
+        }
+
+        assembly {
+            result := mload(add(source, 32))
+        }
+    }
+
     function transfer(
         address _recipient,
         uint256 _amount,
@@ -208,7 +217,7 @@ contract GasContract is Ownable, Constants {
         payment.paymentType = PaymentType.BasicPayment;
         payment.recipient = _recipient;
         payment.amount = _amount;
-        payment.recipientName = _name;
+        payment.recipientName = stringToBytes32(_name);
         payment.paymentID = ++paymentCounter;
         payments[senderOfTx].push(payment);
         bool[] memory status = new bool[](tradePercent);
